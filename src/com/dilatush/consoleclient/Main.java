@@ -1,4 +1,4 @@
-package com.slightlyloony;
+package com.dilatush.consoleclient;
 
 public class Main {
 
