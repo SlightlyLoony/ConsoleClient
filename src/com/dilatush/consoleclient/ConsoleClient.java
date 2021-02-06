@@ -1,9 +1,6 @@
 package com.dilatush.consoleclient;
 
-import com.dilatush.util.AConfig;
-import com.dilatush.util.Base64;
-import com.dilatush.util.Crypto;
-import com.dilatush.util.Sockets;
+import com.dilatush.util.*;
 import com.dilatush.util.cli.ParsedCommandLine;
 
 import javax.crypto.CipherInputStream;
@@ -58,7 +55,7 @@ public class ConsoleClient {
                 SecretKey newKey = keygen.generateKey();
 
                 // print it out in base 64 form...
-                System.out.println( "Key: " + Base64.encode( newKey.getEncoded() ) );
+                System.out.println( "Key: " + Base64Fast.encode( newKey.getEncoded() ) );
 
                 // leave...
                 System.exit( 0 );
@@ -148,7 +145,7 @@ public class ConsoleClient {
             System.out.println( "Our work is done here..." );
 
         }
-        catch( IOException _e ) {
+        catch( IOException _e  ) {
             System.out.println( _e.getMessage() );
         }
         finally {
@@ -280,7 +277,7 @@ public class ConsoleClient {
                 validate( () -> (server.port >= 1024) && (server.port <= 65535), _list, "Port not in range [1024..65535] for " + server.name );
                 validate( () -> !isEmpty( server.secret ), _list, "Missing secret key for " + server.name );
                 if( !isEmpty( server.secret )) {
-                    byte[] key = Base64.decodeBytes( server.secret );
+                    byte[] key = Base64Fast.decodeBytes( server.secret );
                     validate( () -> key.length == 16, _list, "Invalid secret key length for " + server.name );
                 }
                 validate( () -> !isEmpty( server.console ), _list, "Missing console name for " + server.name );
