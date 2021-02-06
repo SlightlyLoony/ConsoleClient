@@ -9,13 +9,17 @@ function init( config ) {
     // create our map...
     config.servers = new Map();
 
-    // create our entries...
+    var server;
 
-    var server = new Server();
-    server.name = "test";
-    server.host = "127.0.0.1";
-    server.port = 8217;
-    server.secret = "abcdefghijklmnopqrstuA";
-    server.console = "echo";
+    // create the named console server/provider configurations...
+    // repeat the block of code below for each named configuration...
+
+    server = new Server();
+    server.name       = "test";                   // the name used to select this configuration on the console client's command line
+    server.serverName = "test"                    // the name of the console server (as configured on the server)
+    server.host       = "127.0.0.1";              // the host name or IP address of the console server
+    server.port       = 8217;                     // the TCP port that the console server is listening on
+    server.secret     = "abcdefghijklmnopqrstuA"; // the shared secret (AES 128 bit key, base64 encoded)
+    server.console    = "test";                   // the name of the console provider to connect to (as configured on the console server)
     config.servers.put( server.name, server );
 }

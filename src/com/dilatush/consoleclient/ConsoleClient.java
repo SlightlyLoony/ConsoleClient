@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.dilatush.util.General.isNull;
+import static com.dilatush.util.Sockets.close;
 import static com.dilatush.util.Strings.isEmpty;
 
 /**
@@ -29,11 +30,19 @@ import static com.dilatush.util.Strings.isEmpty;
  */
 public class ConsoleClient {
 
+    // the highest major.minor version of the protocol that this application is compatible with...
+    private static final int MAJOR_VERSION = 1;
+    private static final int MINOR_VERSION = 0;
+
     private static BufferedReader reader;
-    private static BufferedWriter writer;
     private static Socket socket;
 
 
+    /**
+     * The entry point of this program.
+     *
+     * @param _args The command line arguments.
+     */
     public static void main( final String[] _args ) {
 
         // get our parsed command line - valid and no help...
@@ -62,21 +71,47 @@ public class ConsoleClient {
             }
         }
 
-        // we weren't doing anything else, so try to establish a connection to the requested server...
+        // if we have no config, complain...
+        if( result.getValue( "config" ) == null ) {
+            System.out.println( "No configuration at <user>/.console/config.js, and none specified.");
+            return;
+        }
+
+        // get our configuration...
         Config config = (Config) result.getValue( "config" );
+
+        // if we didn't get a name, list what we've configured...
+        if( !result.get( "name" ).present ) {
+
+            System.out.println( "No connection specified" );
+            showServers( config );
+            return;
+        }
+
+        // we weren't doing anything else, so try to establish a connection to the requested server...
         String name = (String) result.getValue( "name" );
         Config.Server server = config.servers.get( name );
+        if( server == null ) {
+            System.out.println( "Server is not configured: " + name );
+            showServers( config );
+            return;
+        }
 
         try {
             socket = new Socket( server.socket.getAddress(), server.socket.getPort() );
 
-            ID id = getID( socket, name );
+            // get the server ID and make sure all is ok...
+            ID id = getID( socket );
+            if( !server.serverName.equals( id.name ) )
+                throw new IOException( "Invalid server name: got '" + id.name + "', expected '" + server.serverName + "'" );
+            if( (id.major > MAJOR_VERSION) || (id.minor > MINOR_VERSION) )
+                throw new IOException( "Incompatible version: " + id.major + "." + id.minor );
 
             // get our encrypting output stream and turn it into a buffered writer...
             Key key = Crypto.getKey_AES_128( server.secret );
             CipherOutputStream cos = Crypto.getSocketOutputStream_AES_128_CTR( socket, key );
             OutputStreamWriter osw = new OutputStreamWriter( cos, StandardCharsets.UTF_8 );
-            writer = new BufferedWriter( osw, 1000 );
+            BufferedWriter writer = new BufferedWriter( osw, 1000 );
 
             // send the console name to the server...
             writer.write( server.console + "\n" );
@@ -110,7 +145,8 @@ public class ConsoleClient {
                 writer.flush();
             }
 
-            id.hashCode();
+            System.out.println( "Our work is done here..." );
+
         }
         catch( IOException _e ) {
             System.out.println( _e.getMessage() );
@@ -118,11 +154,25 @@ public class ConsoleClient {
         finally {
             close( socket );
         }
-
-        result.hashCode();
     }
 
 
+    /**
+     * Show a list of the configured servers.
+     *
+     * @param _config The configuration object.
+     */
+    private static void showServers( final Config _config ) {
+        System.out.println( "Configured server connections available:");
+        _config.servers.forEach(
+                (name,server) -> System.out.println( "  " + name + ":  " + server.host + ":" + server.port + " --> " + server.console )
+        );
+    }
+
+
+    /**
+     * A simple socket reader that reads from the decrypting input reader.
+     */
     private static class InputReader implements Runnable {
 
         /**
@@ -149,6 +199,12 @@ public class ConsoleClient {
                     close( socket );
                 }
             }
+            try {
+                System.in.close();
+            }
+            catch( IOException _e ) {
+                _e.printStackTrace();
+            }
         }
     }
 
@@ -158,11 +214,10 @@ public class ConsoleClient {
      * problem receiving or decoding the message.
      *
      * @param _socket The socket that's connected to the server.
-     * @param _expectedName The console server name we expect to connect to.
      * @return an instance of {@link ID} containing the decoded ID string.
      * @throws IOException on any problem receiving or decoding the message.
      */
-    private static ID getID( final Socket _socket, final String _expectedName ) throws IOException {
+    private static ID getID( final Socket _socket ) throws IOException {
 
         String idString = Sockets.readLine( _socket );
 
@@ -171,34 +226,33 @@ public class ConsoleClient {
             throw new IOException( "Incorrect number of values in console server ID string: " + idString );
         if( !"Loony Console Server".equals( parts[0] ) )
             throw new IOException( "Invalid console server ID string: " + parts[0] );
-        if( !_expectedName.equals( parts[2] ) )
-            throw new IOException( "Console server name is not what was expected.  Was '" + parts[2] + "', expected '" + _expectedName + "'." );
-        int major = 0;
-        int minor = 0;
+        int major;
+        int minor;
         try {
-            String[] vparts = parts[1].split( "\\." );
-            if( vparts.length != 2 )
+            String[] versionParts = parts[1].split( "\\." );
+            if( versionParts.length != 2 )
                 throw new IOException( "Console server version is improperly formed: " + parts[1] );
-            major = Integer.parseInt( vparts[0] );
-            minor = Integer.parseInt( vparts[1] );
+            major = Integer.parseInt( versionParts[0] );
+            minor = Integer.parseInt( versionParts[1] );
         }
         catch( NumberFormatException _e ) {
             throw new IOException( "Console server version is improperly formed: " + parts[1] );
         }
 
-        return new ID( parts[0], major, minor, parts[2] );
+        return new ID( major, minor, parts[2] );
     }
 
 
+    /**
+     * Simple POJO to hold the results of {@link #getID(Socket)}.
+     */
     private static class ID {
-        private final String server;
         private final int    major;
         private final int    minor;
         private final String name;
 
 
-        public ID( final String _server, final int _major, final int _minor, final String _name ) {
-            server = _server;
+        public ID( final int _major, final int _minor, final String _name ) {
             major = _major;
             minor = _minor;
             name = _name;
@@ -207,22 +261,8 @@ public class ConsoleClient {
 
 
     /**
-     * Closes the given socket and absorbs any exception.  If the given socket is {@code null} or is already closed, this method does nothing.
-     *
-     * @param _socket The socket to close.
+     * Configuration class for this application.
      */
-    private static void close( final Socket _socket ) {
-        if( (_socket != null) && !_socket.isClosed() ) {
-            try {
-                _socket.close();
-            }
-            catch( IOException _f ) {
-                /* naught to do */
-            }
-        }
-    }
-
-
     public static class Config extends AConfig {
 
         public Map<String,Server> servers;
@@ -254,14 +294,18 @@ public class ConsoleClient {
         }
 
 
+        /**
+         * Configuration of a server.
+         */
         public static class Server {
 
-            public String name;
-            public String host;
-            public int port;
-            public String secret;
-            public String console;
-            public InetSocketAddress socket;
+            public String name;               // the name used to select this configuration on the console client's command line
+            public String serverName;         // the name of the console server (as configured on the server)
+            public String host;               // the host name or IP address of the console server
+            public int port;                  // the TCP port that the console server is listening on
+            public String secret;             // the shared secret (AES 128 bit key, base64 encoded)
+            public String console;            // the name of the console provider to connect to (as configured on the console server)
+            public InetSocketAddress socket;  // the socket to connect to; created from host and port by configuration validation
         }
     }
 }

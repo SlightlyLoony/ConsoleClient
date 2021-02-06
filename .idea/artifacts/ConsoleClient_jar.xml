@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="ConsoleClient:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/ConsoleClient_jar</output-path>
+    <root id="archive" name="ConsoleClient.jar">
+      <element id="module-output" name="ConsoleClient" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../Util/out/artifacts/Util/Util.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

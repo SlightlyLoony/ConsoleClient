@@ -1,0 +1,87 @@
+= Console Client
+Tom Dilatush (tom@dilatush.com) +
+V1.0, 2021-01-03
+:toc:
+:toc-placement!:
+toc::[]
+
+== Overview
+This program is the companion program to the https://github.com/SlightlyLoony/Util/blob/master/Console.adoc[Console Server] -- it is the command line "console" that allows a user to "talk with" the Console Server.
+
+== Using the Console Client
+The `console.bash` file included in this package is normally used to invoke the Console Client.  In normal use you would type:
+....
+./console.bash <name>
+....
+where `<name>` is the name of one of the configured console servers.  Entering this command will connect you to the combination of console server and console provider in the named configuration.  There can be any number of named configurations.
+
+By default, the configuration is contained in `~/.console/config.js`.  That configuration file contains the shared secrets (AES 128 bit keys) that provide both authentication and encryption of console client/server communication.  Therefore, it should be treated much like your private SSH key in `~/.ssh` -- only you should have read and write permissions.
+
+== Console Client optional arguments
+When starting the Console Client, you can specify the following optional command line arguments:
+
+.Command Line Optional Arguments
+|===
+|*Name*|*Description*
+|-k, --key|Generate a new shared secret and quit.  Use this to create shared secrets for new console servers.  The new shared secret will need to be provisioned in both the server and the client configurations.
+|-c, --config =<config file path>|Specify an alternate location for the configuration file.
+|-?, --?|Summary help on the command line arguments and general usage.
+|-h, --help|Detailed help on the command line arguments and general usage.
+|===
+
+== Console Client configuration file
+Here's an example of the Console Client configuration file:
+....
+/*
+ * The init( config ) function that will be called by AConfig.init().
+ */
+function init( config ) {
+
+    var Map               = Java.type( "java.util.HashMap" );
+    var Server            = Java.type( "com.dilatush.consoleclient.ConsoleClient.Config.Server" );
+
+    // create our map...
+    config.servers = new Map();
+
+    var server;
+
+    // create the named console server/provider configurations...
+    // repeat the block of code below for each named configuration...
+
+    server = new Server();
+    server.name       = "test";                   // the name used to select this configuration on the console client's command line
+    server.serverName = "test"                    // the name of the console server (as configured on the server)
+    server.host       = "127.0.0.1";              // the host name or IP address of the console server
+    server.port       = 8217;                     // the TCP port that the console server is listening on
+    server.secret     = "abcdefghijklmnopqrstuA"; // the shared secret (AES 128 bit key, base64 encoded)
+    server.console    = "test";                   // the name of the console provider to connect to (as configured on the console server)
+    config.servers.put( server.name, server );
+}
+....
+Everything above the `// create the named console server/provider configurations...` shoule be left unchanged.  Below that there are eight lines of code that create a `Server` instance and populate its fields, then put it in the map of named `Server` instances.  That block of eight lines needs to be repeated for each console server/provider configuration you want.  There is no practical limit as to how many you include.  The `Server.name` field must have a unique name for each console server/provider configuration; otherwise there are no restrictions so long as the values are valid.  Note that two of the fields (`Server.serverName` and `Server.console`) must match the configured names on the console server you're connecting to.
+
+== How is this package licensed?
+ConsoleClient is licensed with the quite permissive MIT license: +
+....
+Created: February 6, 2021
+Author: Tom Dilatush <tom@dilatush.com>
+Github:  https://github.com/SlightlyLoony/ConsoleClient
+License: MIT
+
+Copyright 2021 Tom Dilatush (aka "SlightlyLoony")
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so.
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+....
