@@ -33,6 +33,7 @@ public class ConsoleClient {
 
     private static BufferedReader reader;
     private static Socket socket;
+    private static Thread main;
 
 
     /**
@@ -41,6 +42,8 @@ public class ConsoleClient {
      * @param _args The command line arguments.
      */
     public static void main( final String[] _args ) {
+
+        main = Thread.currentThread();
 
         // get our parsed command line - valid and no help...
         ParsedCommandLine result = CmdLine.get( _args );
@@ -94,6 +97,7 @@ public class ConsoleClient {
             return;
         }
 
+        BufferedReader keyReader = null;
         try {
             socket = new Socket( server.socket.getAddress(), server.socket.getPort() );
 
@@ -132,7 +136,7 @@ public class ConsoleClient {
             reader.start();
 
             // loop while getting user input...
-            BufferedReader keyReader = new BufferedReader( new InputStreamReader( System.in ) );
+            keyReader = new BufferedReader( new InputStreamReader( System.in ) );
             while( !Thread.currentThread().isInterrupted() ) {
                 String line = keyReader.readLine();
                 if( isNull( line ) )
@@ -141,16 +145,24 @@ public class ConsoleClient {
                 writer.newLine();
                 writer.flush();
             }
-
-            System.out.println( "Our work is done here..." );
-
         }
         catch( IOException _e  ) {
             System.out.println( _e.getMessage() );
         }
         finally {
             close( socket );
+            main.interrupt();
+            if( keyReader != null ) {
+                try {
+                    keyReader.close();
+                }
+                catch( IOException _e ) {
+                    // naught to do, just ignore it...
+                }
+            }
         }
+
+        System.out.println( "Our work is done here..." );
     }
 
 
