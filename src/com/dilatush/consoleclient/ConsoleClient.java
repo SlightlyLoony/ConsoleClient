@@ -31,6 +31,7 @@ public class ConsoleClient {
     private static final int MAJOR_VERSION = 1;
     private static final int MINOR_VERSION = 0;
 
+    private static BufferedReader keyReader = null;
     private static BufferedReader reader;
     private static Socket socket;
     private static Thread main;
@@ -97,7 +98,6 @@ public class ConsoleClient {
             return;
         }
 
-        BufferedReader keyReader = null;
         try {
             socket = new Socket( server.socket.getAddress(), server.socket.getPort() );
 
@@ -151,15 +151,6 @@ public class ConsoleClient {
         }
         finally {
             close( socket );
-            main.interrupt();
-            if( keyReader != null ) {
-                try {
-                    keyReader.close();
-                }
-                catch( IOException _e ) {
-                    // naught to do, just ignore it...
-                }
-            }
         }
 
         System.out.println( "Our work is done here..." );
@@ -208,11 +199,16 @@ public class ConsoleClient {
                     close( socket );
                 }
             }
-            try {
-                System.in.close();
-            }
-            catch( IOException _e ) {
-                _e.printStackTrace();
+
+            // stop our key reader if we possibly can...
+            main.interrupt();
+            if( ConsoleClient.keyReader != null ) {
+                try {
+                    keyReader.close();
+                }
+                catch( IOException _e ) {
+                    // naught to do, just ignore it...
+                }
             }
         }
     }
